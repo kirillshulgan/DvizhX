@@ -27,12 +27,12 @@ namespace DvizhX.Infrastructure.Authentication
             var jti = Guid.NewGuid().ToString(); // Unique ID for this specific token
 
             var claims = new List<Claim>
-        {
-            new(JwtRegisteredClaimNames.Sub, userId.ToString()),
-            new(JwtRegisteredClaimNames.UniqueName, username),
-            new(JwtRegisteredClaimNames.Email, email),
-            new(JwtRegisteredClaimNames.Jti, jti)
-        };
+            {
+                new(JwtRegisteredClaimNames.Sub, userId.ToString()),
+                new(JwtRegisteredClaimNames.UniqueName, username),
+                new(JwtRegisteredClaimNames.Email, email),
+                new(JwtRegisteredClaimNames.Jti, jti)
+            };
 
             var issuer = configuration["JwtSettings:Issuer"];
             var audience = configuration["JwtSettings:Audience"];

@@ -8,9 +8,9 @@
 
 	<ItemGroup>
 		<PackageReference Include="MediatR" Version="14.0.0" />
-  		<PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.1" />
 		<PackageReference Include="Scalar.AspNetCore" Version="2.12.30" />
-		<PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.1" />
+		<PackageReference Include="Swashbuckle.AspNetCore" Version="7.2.0" />
+		<PackageReference Include="Microsoft.OpenApi" Version="1.6.22" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.2">
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 			<PrivateAssets>all</PrivateAssets>

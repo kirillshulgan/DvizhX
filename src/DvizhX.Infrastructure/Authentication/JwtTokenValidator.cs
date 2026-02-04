@@ -20,7 +20,8 @@ namespace DvizhX.Infrastructure.Authentication
                 ValidIssuer = configuration["JwtSettings:Issuer"],
                 ValidAudience = configuration["JwtSettings:Audience"],
                 IssuerSigningKey = new SymmetricSecurityKey(
-                    Encoding.UTF8.GetBytes(configuration["JwtSettings:Secret"] ?? "super-secret-key-at-least-32-chars-long")
+                    Encoding.UTF8.GetBytes(configuration["JwtSettings:Secret"]
+                            ?? throw new InvalidOperationException("JwtSettings:Secret is not configured."))
                 )
             };
 
