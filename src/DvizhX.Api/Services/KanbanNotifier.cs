@@ -19,5 +19,17 @@ namespace DvizhX.Api.Services
             var group = KanbanHub.GetGroupName(eventId);
             await hubContext.Clients.Group(group).SendAsync("CardMoved", new { cardId, newColumnId, newIndex });
         }
+
+        public async Task CardUpdatedAsync(Guid eventId, Guid cardId, string cardTitle, string cardDescription)
+        {
+            var group = KanbanHub.GetGroupName(eventId);
+            await hubContext.Clients.Group(group).SendAsync("CardUpdated", new { cardId, cardTitle, cardDescription });
+        }
+
+        public async Task CardDeletedAsync(Guid eventId, Guid cardId)
+        {
+            var group = KanbanHub.GetGroupName(eventId);
+            await hubContext.Clients.Group(group).SendAsync("CardDeleted", new { cardId });
+        }
     }
 }

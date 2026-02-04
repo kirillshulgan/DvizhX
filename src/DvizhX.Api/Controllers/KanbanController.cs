@@ -1,4 +1,7 @@
 ﻿using DvizhX.Application.Features.Kanban.Commands.CreateCard;
+using DvizhX.Application.Features.Kanban.Commands.DeleteCard;
+using DvizhX.Application.Features.Kanban.Commands.MoveCard;
+using DvizhX.Application.Features.Kanban.Commands.UpdateCard;
 using DvizhX.Application.Features.Kanban.Common;
 using DvizhX.Application.Features.Kanban.Queries.GetBoard;
 using MediatR;
@@ -69,6 +72,57 @@ namespace DvizhX.Api.Controllers
         {
             var result = await mediator.Send(command);
             return Ok(result);
+        }
+
+        /// <summary>
+        /// Переместить карточку
+        /// </summary>
+        /// <remarks>
+        /// Меняет позицию карточки (сортировку) или переносит в другую колонку.
+        /// Индексы остальных карточек пересчитываются автоматически.
+        /// </remarks>
+        [HttpPut("cards/move")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> MoveCard(MoveCardCommand command)
+        {
+            await mediator.Send(command);
+            return Ok();
+        }
+
+        /// <summary>
+        /// Обновить содержимое карточки
+        /// </summary>
+        /// <remarks>
+        /// Позволяет изменить заголовок и описание задачи. Не меняет позицию или колонку.
+        /// </remarks>
+        /// <param name="id">ID карточки</param>
+        /// <param name="command">Новые данные (Заголовок, Описание)</param>
+        [HttpPut("cards/{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> UpdateCard(Guid id, UpdateCardCommand command)
+        {
+            if (id != command.CardId) return BadRequest();
+            await mediator.Send(command);
+            return Ok();
+        }
+
+        /// <summary>
+        /// Удалить карточку
+        /// </summary>
+        /// <remarks>
+        /// Удаляет задачу безвозвратно. Автоматически сдвигает индексы нижних задач вверх, чтобы закрыть образовавшуюся "дырку".
+        /// </remarks>
+        /// <param name="id">ID удаляемой карточки</param>
+        [HttpDelete("cards/{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> DeleteCard(Guid id)
+        {
+            await mediator.Send(new DeleteCardCommand(id));
+            return Ok();
         }
     }
 }
