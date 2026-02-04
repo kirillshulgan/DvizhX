@@ -29,5 +29,12 @@ namespace DvizhX.Infrastructure.Persistence.Repositories
                 .Include(e => e.Participants)
                 .FirstOrDefaultAsync(e => e.InviteCode == code, cancellationToken);
         }
+
+        public async Task AddParticipantAsync(EventParticipant participant, CancellationToken cancellationToken = default)
+        {
+            // Добавляем запись напрямую в таблицу участников, не трогая таблицу событий
+            await _dbContext.Participants.AddAsync(participant, cancellationToken);
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
     }
 }

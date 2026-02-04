@@ -2,13 +2,15 @@
 using DvizhX.Application.Common.Interfaces.Persistence;
 using DvizhX.Application.Features.Events.Common;
 using MediatR;
+using Microsoft.Extensions.Configuration;
 
 namespace DvizhX.Application.Features.Events.Queries.GetById
 {
     public class GetEventByIdQueryHandler(
-    IEventRepository eventRepository,
-    ICurrentUserService currentUserService)
-    : IRequestHandler<GetEventByIdQuery, EventDto>
+        IConfiguration configuration,
+        IEventRepository eventRepository,
+        ICurrentUserService currentUserService)
+        : IRequestHandler<GetEventByIdQuery, EventDto>
     {
         public async Task<EventDto> Handle(GetEventByIdQuery request, CancellationToken cancellationToken)
         {
@@ -26,6 +28,10 @@ namespace DvizhX.Application.Features.Events.Queries.GetById
             if (myParticipantRecord == null)
                 throw new Exception("Access denied"); // Лучше кастомный ForbiddenException
 
+            var baseUrl = configuration["App:FrontendUrl"] ?? throw new InvalidOperationException("App:FrontendUrl is not configured.");
+            var inviteLink = $"{baseUrl}/join/{entity.InviteCode}";
+
+
             return new EventDto(
                 entity.Id,
                 entity.Title,
@@ -33,6 +39,7 @@ namespace DvizhX.Application.Features.Events.Queries.GetById
                 entity.StartDate,
                 entity.Status,
                 entity.InviteCode,
+                inviteLink,
                 myParticipantRecord.Role,
                 entity.Participants.Count
             );

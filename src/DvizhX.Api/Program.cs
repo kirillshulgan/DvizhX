@@ -135,12 +135,13 @@ if (app.Environment.IsDevelopment())
     {
         // Указываем Scalar'у, где брать спецификацию, сгенерированную Swashbuckle'ом
         // По умолчанию Swashbuckle кладет её сюда:
-        options.WithOpenApiRoutePattern("/swagger/v1/swagger.json");
-
         options
+            .WithOpenApiRoutePattern("/swagger/v1/swagger.json")
             .WithTitle("DvizhX API Documentation")
             .WithTheme(ScalarTheme.DeepSpace) // Или Mars, Moon, Solarized
             .WithDefaultHttpClient(ScalarTarget.CSharp, ScalarClient.HttpClient);
+
+        options.AddPreferredSecuritySchemes("Bearer");
     });
 }
 

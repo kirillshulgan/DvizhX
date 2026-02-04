@@ -11,7 +11,7 @@ namespace DvizhX.Infrastructure.Persistence.Repositories
             return await _dbContext.Boards
                 .Include(b => b.Columns.OrderBy(c => c.OrderIndex))
                     .ThenInclude(c => c.Cards.OrderBy(card => card.OrderIndex))
-                        .ThenInclude(card => card.AssignedUser) // Чтобы знать имя исполнителя
+                        .ThenInclude(card => card.AssignedUser)
                 .FirstOrDefaultAsync(b => b.EventId == eventId, cancellationToken);
         }
     }

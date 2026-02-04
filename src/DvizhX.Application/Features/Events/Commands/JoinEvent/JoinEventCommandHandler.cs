@@ -39,10 +39,12 @@ namespace DvizhX.Application.Features.Events.Commands.JoinEvent
 
             // Тут внимание: можно добавить через коллекцию eventEntity.Participants.Add(participant)
             // Но EF Core трекает изменения, если мы их загрузили через Include.
-            eventEntity.Participants.Add(participant);
+            //eventEntity.Participants.Add(participant);
 
             // Сохраняем (EF обновит связь)
-            await eventRepository.UpdateAsync(eventEntity, cancellationToken);
+            //await eventRepository.UpdateAsync(eventEntity, cancellationToken);
+
+            await eventRepository.AddParticipantAsync(participant, cancellationToken);
 
             return eventEntity.Id;
         }

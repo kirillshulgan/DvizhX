@@ -2,5 +2,10 @@
 
 namespace DvizhX.Application.Features.Events.Commands.JoinEvent
 {
-    public record JoinEventCommand(string InviteCode) : IRequest<Guid>;
+    /// <summary> Данные для вступления в событие </summary>
+    public record JoinEventCommand(
+        /// <summary>Инвайт код события</summary>
+        /// <example>x76S09asd</example>
+        string InviteCode
+    ) : IRequest<Guid>;
 }

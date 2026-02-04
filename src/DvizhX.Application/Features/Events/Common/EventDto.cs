@@ -9,6 +9,7 @@ namespace DvizhX.Application.Features.Events.Common
         DateTime StartDate,
         EventStatus Status,
         string InviteCode,
+        string InviteLink,
         ParticipantRole MyRole,
         int ParticipantsCount
     );

@@ -1,5 +1,6 @@
 ﻿using DvizhX.Application.Features.Events.Commands.CreateEvent;
 using DvizhX.Application.Features.Events.Commands.JoinEvent;
+using DvizhX.Application.Features.Events.Commands.RegenerateInvite;
 using DvizhX.Application.Features.Events.Common;
 using DvizhX.Application.Features.Events.Queries.GetById;
 using DvizhX.Application.Features.Events.Queries.GetList;
@@ -103,6 +104,29 @@ namespace DvizhX.Api.Controllers
         {
             var eventId = await mediator.Send(new JoinEventCommand(code));
             return Ok(new { EventId = eventId });
+        }
+
+        /// <summary>
+        /// Получить/Сгенерировать новую ссылку-приглашение
+        /// </summary>
+        /// <remarks>
+        /// Сбрасывает старый код приглашения и возвращает новую ссылку.
+        /// Доступно только для Owner и Admin.
+        /// </remarks>
+        [HttpPost("{id}/regenerate-invite")]
+        [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        public async Task<IActionResult> RegenerateInvite(Guid id)
+        {
+            try
+            {
+                var link = await mediator.Send(new RegenerateInviteCodeCommand(id));
+                return Ok(new { InviteLink = link });
+            }
+            catch (Exception ex) when (ex.Message == "Access denied")
+            {
+                return Forbid();
+            }
         }
     }
 }
