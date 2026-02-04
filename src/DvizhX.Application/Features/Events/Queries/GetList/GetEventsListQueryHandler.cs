@@ -20,6 +20,7 @@ namespace DvizhX.Application.Features.Events.Queries.GetList
             return events.Select(e => new EventBriefDto(
                 e.Id,
                 e.Title,
+                e.Description,
                 e.StartDate,
                 e.Status,
                 e.Participants.First(p => p.UserId == userId).Role // Моя роль

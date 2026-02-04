@@ -1,0 +1,39 @@
+import apiClient from './client';
+import type { Board, BoardColumn, Card } from '../types';
+
+// Временный хак: так как у нас нет страницы выбора Event, 
+// мы будем запрашивать список и брать первый попавшийся.
+interface EventDto {
+    id: string;
+    title: string;
+    description: string;
+    startDate: Date;
+    status: number;
+    inviteCode: string;
+    inviteLink: string;
+    myRole: number;
+    participantsCount: number;
+}
+
+export const kanbanService = {
+    // 1. Получить мои события (чтобы узнать ID доски)
+    getMyEvents: async () => {
+        const response = await apiClient.get<EventDto[]>('/events');
+        return response.data;
+    },
+
+    // 2. Получить доску целиком
+    getBoard: async (eventId: string) => {
+        const response = await apiClient.get<Board>(`/kanban/${eventId}`);
+        return response.data;
+    },
+
+    createEvent: async (title: string, description: string, startDate: string) => {
+        const response = await apiClient.post<string>('/events', {
+            title,
+            description,
+            startDate
+        });
+        return response.data;
+    }
+};
