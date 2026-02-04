@@ -1,3 +1,5 @@
+using DvizhX.Api.Services;
+using DvizhX.Application.Common.Interfaces;
 using DvizhX.Application.Features.Auth.Commands.Register;
 using DvizhX.Infrastructure;
 using DvizhX.Infrastructure.Persistence;
@@ -13,6 +15,9 @@ var builder = WebApplication.CreateBuilder(args);
 // Add DB Context
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddHttpContextAccessor(); // Обязательно для доступа к HttpContext
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
