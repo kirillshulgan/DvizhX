@@ -3,5 +3,12 @@ using MediatR;
 
 namespace DvizhX.Application.Features.Auth.Commands.RefreshToken
 {
-    public record RefreshTokenCommand(string AccessToken, string RefreshToken) : IRequest<AuthenticationResult>;
+    public record RefreshTokenCommand(
+
+        /// <summary> Истекший Access Token (нужен для извлечения Claims) </summary>
+        string AccessToken,
+
+        /// <summary> Валидный Refresh Token </summary>
+        string RefreshToken
+    ) : IRequest<AuthenticationResult>;
 }
