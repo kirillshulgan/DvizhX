@@ -21,6 +21,7 @@ namespace DvizhX.Infrastructure
             services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
             services.AddScoped<IEventRepository, EventRepository>();
             services.AddScoped<IBoardRepository, BoardRepository>();
+            services.AddScoped<ICardRepository, CardRepository>();
 
             // Можно добавить generic регистрацию, если нужно инжектить IRepository<SomeEntity>
             services.AddScoped(typeof(IRepository<>), typeof(BaseRepository<>));

@@ -1,4 +1,5 @@
-﻿using DvizhX.Application.Features.Kanban.Queries.GetBoard;
+﻿using DvizhX.Application.Features.Kanban.Commands.CreateCard;
+using DvizhX.Application.Features.Kanban.Queries.GetBoard;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -26,6 +27,13 @@ namespace DvizhX.Api.Controllers
             {
                 return Forbid(); // Возвращает 403 Forbidden
             }
+        }
+
+        [HttpPost("cards")]
+        public async Task<IActionResult> CreateCard(CreateCardCommand command)
+        {
+            var result = await mediator.Send(command);
+            return Ok(result);
         }
     }
 }

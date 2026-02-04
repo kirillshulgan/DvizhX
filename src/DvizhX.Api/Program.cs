@@ -1,5 +1,6 @@
 using DvizhX.Api.Services;
 using DvizhX.Application.Common.Interfaces;
+using DvizhX.Application.Common.Interfaces.Realtime;
 using DvizhX.Application.Features.Auth.Commands.Register;
 using DvizhX.Infrastructure;
 using DvizhX.Infrastructure.Persistence;
@@ -18,8 +19,10 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 builder.Services.AddHttpContextAccessor(); // Обязательно для доступа к HttpContext
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+builder.Services.AddScoped<IKanbanNotifier, KanbanNotifier>();
 
 builder.Services.AddControllers();
+builder.Services.AddSignalR();
 builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddInfrastructure();
@@ -136,4 +139,7 @@ app.UseAuthentication(); // Распознает токен и заполняет User
 app.UseAuthorization();  // Проверяет права доступа ([Authorize])
 
 app.MapControllers();
+
+app.MapHub<DvizhX.Api.Hubs.KanbanHub>("/hubs/kanban");
+
 app.Run();

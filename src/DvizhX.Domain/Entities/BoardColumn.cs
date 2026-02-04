@@ -5,6 +5,7 @@ namespace DvizhX.Domain.Entities
     public class BoardColumn : BaseEntity
     {
         public Guid BoardId { get; set; }
+        public Board? Board { get; set; }
         public required string Title { get; set; }
         public int OrderIndex { get; set; }
         public ICollection<Card> Cards { get; set; } = [];
