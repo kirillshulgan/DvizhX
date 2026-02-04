@@ -1,6 +1,9 @@
-Запуск локального контейнера с базой:
-docker compose -f docker-compose.dev.yml up -d
+п»ї<h1 align="center">Р РµРїРѕР·РёС‚РѕСЂРёР№ РїСЂРѕРµРєС‚Р° DvizhX (Р‘СѓС…РёРєСЃ24)</a>
+<br/>
+<h3 align="center">Р—Р°РїСѓСЃРє Р»РѕРєР°Р»СЊРЅРѕР№ Р‘Р”:</h3>
+<h4 align="center">docker compose -f docker-compose.dev.yml up -d</h4>
+<br/>
+<h3 align="center">РЎРѕР·РґР°РЅРёРµ Рё РїСЂРёРјРµРЅРµРЅРёРµ РјРёРіСЂР°С†РёР№</h3>
+<h4 align="center">dotnet ef migrations add InitialCreate -s src/DvizhX.Api -p src/DvizhX.Infrastructure</h4>
+<h4 align="center">dotnet ef database update -s src/DvizhX.Api -p src/DvizhX.Infrastructure</h4>
 
-Миграции:
-dotnet ef migrations add InitialCreate -s src/DvizhX.Api -p src/DvizhX.Infrastructure
-dotnet ef database update -s src/DvizhX.Api -p src/DvizhX.Infrastructure
