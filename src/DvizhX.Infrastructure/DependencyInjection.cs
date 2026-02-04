@@ -13,12 +13,15 @@ namespace DvizhX.Infrastructure
             // Auth services
             services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
             services.AddSingleton<IPasswordHasher, PasswordHasher>();
+            services.AddSingleton<IJwtTokenValidator, JwtTokenValidator>();
+            services.AddSingleton<IGoogleTokenValidator, GoogleTokenValidator>();
 
             // Repositories
             services.AddScoped<IUserRepository, UserRepository>();
+            services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 
             // Можно добавить generic регистрацию, если нужно инжектить IRepository<SomeEntity>
-             services.AddScoped(typeof(IRepository<>), typeof(BaseRepository<>));
+            services.AddScoped(typeof(IRepository<>), typeof(BaseRepository<>));
 
             return services;
         }

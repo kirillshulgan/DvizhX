@@ -6,5 +6,8 @@ namespace DvizhX.Application.Common.Interfaces.Persistence
     {
         Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default);
         Task<bool> IsEmailUniqueAsync(string email, CancellationToken cancellationToken = default);
+
+        Task<User?> GetByGoogleIdAsync(string googleId, CancellationToken cancellationToken = default);
+        Task<User?> GetByTelegramIdAsync(long telegramId, CancellationToken cancellationToken = default);
     }
 }

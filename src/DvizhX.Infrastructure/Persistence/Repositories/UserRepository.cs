@@ -15,5 +15,15 @@ namespace DvizhX.Infrastructure.Persistence.Repositories
         {
             return !await _dbContext.Users.AnyAsync(u => u.Email == email, cancellationToken);
         }
+
+        public async Task<User?> GetByGoogleIdAsync(string googleId, CancellationToken cancellationToken = default)
+        {
+            return await _dbContext.Users.FirstOrDefaultAsync(u => u.GoogleId == googleId, cancellationToken);
+        }
+
+        public async Task<User?> GetByTelegramIdAsync(long telegramId, CancellationToken cancellationToken = default)
+        {
+            return await _dbContext.Users.FirstOrDefaultAsync(u => u.TelegramId == telegramId, cancellationToken);
+        }
     }
 }

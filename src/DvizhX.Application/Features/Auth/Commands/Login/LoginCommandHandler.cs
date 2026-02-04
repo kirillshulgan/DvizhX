@@ -1,32 +1,51 @@
 ﻿using DvizhX.Application.Common.Interfaces.Authentication;
 using DvizhX.Application.Common.Interfaces.Persistence;
+using DvizhX.Application.Features.Auth.Common;
 using MediatR;
 
 namespace DvizhX.Application.Features.Auth.Commands.Login
 {
-    public class LoginCommandHandler(IUserRepository userRepository, IPasswordHasher passwordHasher, IJwtTokenGenerator jwtTokenGenerator) : IRequestHandler<LoginCommand, string>
+    public class LoginCommandHandler(
+    IUserRepository userRepository,
+    IPasswordHasher passwordHasher,
+    IJwtTokenGenerator jwtTokenGenerator,
+    IRefreshTokenRepository refreshTokenRepository)
+    : IRequestHandler<LoginCommand, AuthenticationResult> // Исправили
     {
-        public async Task<string> Handle(LoginCommand request, CancellationToken cancellationToken)
+        public async Task<AuthenticationResult> Handle(LoginCommand request, CancellationToken cancellationToken)
         {
             // 1. Ищем юзера
             var user = await userRepository.GetByEmailAsync(request.Email, cancellationToken);
 
-            // В продакшене лучше возвращать одинаковую ошибку "Invalid credentials", чтобы не палить существование почты
             if (user is null)
             {
-                throw new Exception("User not found.");
+                throw new Exception("Invalid credentials."); // Не палим, что email не найден
             }
 
             // 2. Проверяем пароль
             if (!passwordHasher.Verify(request.Password, user.PasswordHash))
             {
-                throw new Exception("Invalid password.");
+                throw new Exception("Invalid credentials.");
             }
 
-            // 3. Генерируем токен
-            var token = jwtTokenGenerator.GenerateToken(user.Id, user.Username, user.Email);
+            // 3. Генерируем токены
+            var (accessToken, jti) = jwtTokenGenerator.GenerateAccessToken(user.Id, user.Username, user.Email);
+            var refreshToken = jwtTokenGenerator.GenerateRefreshToken();
 
-            return token;
+            // 4. Сохраняем Refresh Token в БД
+            var refreshTokenEntity = new Domain.Entities.RefreshToken
+            {
+                Token = refreshToken,
+                JwtId = jti,
+                UserId = user.Id,
+                ExpiryDate = DateTime.UtcNow.AddMonths(6),
+                IsUsed = false,
+                IsRevoked = false
+            };
+
+            await refreshTokenRepository.AddAsync(refreshTokenEntity, cancellationToken);
+
+            return new AuthenticationResult(accessToken, refreshToken);
         }
     }
 }
