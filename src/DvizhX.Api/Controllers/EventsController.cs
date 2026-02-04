@@ -1,4 +1,5 @@
 ﻿using DvizhX.Application.Features.Events.Commands.CreateEvent;
+using DvizhX.Application.Features.Events.Commands.JoinEvent;
 using DvizhX.Application.Features.Events.Queries.GetById;
 using DvizhX.Application.Features.Events.Queries.GetList;
 using MediatR;
@@ -42,6 +43,13 @@ namespace DvizhX.Api.Controllers
         {
             var id = await mediator.Send(command);
             return CreatedAtAction(nameof(GetById), new { id }, id);
+        }
+
+        [HttpPost("join/{code}")]
+        public async Task<IActionResult> Join(string code)
+        {
+            var eventId = await mediator.Send(new JoinEventCommand(code));
+            return Ok(new { EventId = eventId });
         }
     }
 }

@@ -21,5 +21,13 @@ namespace DvizhX.Infrastructure.Persistence.Repositories
                 .OrderBy(e => e.StartDate)
                 .ToListAsync(cancellationToken);
         }
+
+        public async Task<Event?> GetByInviteCodeAsync(string code, CancellationToken cancellationToken = default)
+        {
+            // Грузим участников, чтобы проверить, не вступил ли уже
+            return await _dbContext.Events
+                .Include(e => e.Participants)
+                .FirstOrDefaultAsync(e => e.InviteCode == code, cancellationToken);
+        }
     }
 }
