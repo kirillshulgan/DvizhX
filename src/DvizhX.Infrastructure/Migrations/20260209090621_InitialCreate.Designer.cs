@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace DvizhX.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260203231515_InitialCreate")]
+    [Migration("20260209090621_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -89,9 +89,6 @@ namespace DvizhX.Infrastructure.Migrations
                     b.Property<Guid?>("AssignedUserId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("BoardColumnId")
-                        .HasColumnType("uuid");
-
                     b.Property<Guid>("ColumnId")
                         .HasColumnType("uuid");
 
@@ -115,7 +112,7 @@ namespace DvizhX.Infrastructure.Migrations
 
                     b.HasIndex("AssignedUserId");
 
-                    b.HasIndex("BoardColumnId");
+                    b.HasIndex("ColumnId");
 
                     b.ToTable("Cards");
                 });
@@ -273,20 +270,24 @@ namespace DvizhX.Infrastructure.Migrations
 
             modelBuilder.Entity("DvizhX.Domain.Entities.Board", b =>
                 {
-                    b.HasOne("DvizhX.Domain.Entities.Event", null)
+                    b.HasOne("DvizhX.Domain.Entities.Event", "Event")
                         .WithMany("Boards")
                         .HasForeignKey("EventId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Event");
                 });
 
             modelBuilder.Entity("DvizhX.Domain.Entities.BoardColumn", b =>
                 {
-                    b.HasOne("DvizhX.Domain.Entities.Board", null)
+                    b.HasOne("DvizhX.Domain.Entities.Board", "Board")
                         .WithMany("Columns")
                         .HasForeignKey("BoardId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Board");
                 });
 
             modelBuilder.Entity("DvizhX.Domain.Entities.Card", b =>
@@ -295,11 +296,15 @@ namespace DvizhX.Infrastructure.Migrations
                         .WithMany()
                         .HasForeignKey("AssignedUserId");
 
-                    b.HasOne("DvizhX.Domain.Entities.BoardColumn", null)
+                    b.HasOne("DvizhX.Domain.Entities.BoardColumn", "Column")
                         .WithMany("Cards")
-                        .HasForeignKey("BoardColumnId");
+                        .HasForeignKey("ColumnId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("AssignedUser");
+
+                    b.Navigation("Column");
                 });
 
             modelBuilder.Entity("DvizhX.Domain.Entities.Event", b =>

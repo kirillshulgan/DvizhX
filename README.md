@@ -45,6 +45,10 @@ docker compose -f docker-compose.dev.yml up -d
 # Если миграция еще не создана:
 # dotnet ef migrations add InitialCreate -s src/DvizhX.Api -p src/DvizhX.Infrastructure
 
+# Если не видит dotnet ef:
+dotnet tool install --global dotnet-ef
+$env:PATH = $env:PATH + ";C:\Users\"name"\.dotnet\tools"
+
 # Применить миграции:
 dotnet ef database update -s src/DvizhX.Api -p src/DvizhX.Infrastructure
 \`\`\`

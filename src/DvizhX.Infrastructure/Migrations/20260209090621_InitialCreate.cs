@@ -162,7 +162,6 @@ namespace DvizhX.Infrastructure.Migrations
                     Description = table.Column<string>(type: "text", nullable: true),
                     OrderIndex = table.Column<int>(type: "integer", nullable: false),
                     AssignedUserId = table.Column<Guid>(type: "uuid", nullable: true),
-                    BoardColumnId = table.Column<Guid>(type: "uuid", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
@@ -170,10 +169,11 @@ namespace DvizhX.Infrastructure.Migrations
                 {
                     table.PrimaryKey("PK_Cards", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Cards_Columns_BoardColumnId",
-                        column: x => x.BoardColumnId,
+                        name: "FK_Cards_Columns_ColumnId",
+                        column: x => x.ColumnId,
                         principalTable: "Columns",
-                        principalColumn: "Id");
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_Cards_Users_AssignedUserId",
                         column: x => x.AssignedUserId,
@@ -192,9 +192,9 @@ namespace DvizhX.Infrastructure.Migrations
                 column: "AssignedUserId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Cards_BoardColumnId",
+                name: "IX_Cards_ColumnId",
                 table: "Cards",
-                column: "BoardColumnId");
+                column: "ColumnId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Columns_BoardId",
