@@ -33,31 +33,29 @@
 
 ### 2. Запуск инфраструктуры (БД + Adminer)
 Поднимает PostgreSQL и pgAdmin в контейнерах.
-\`\`\`bash
+
 docker compose -f docker-compose.dev.yml up -d
-\`\`\`
-*   **Postgres:** \`localhost:5432\` (user: \`developer\`, pass: \`developer\`, db: \`dev_main\`)
-*   **pgAdmin:** \`http://localhost:5050\` (email: \`admin@dvizhx.local\`, pass: \`admin\`)
+
+*   **Postgres:** localhost:5432 (user: developer, password: developer, db: dev_main)
+*   **pgAdmin:** http://localhost:5050 (email: admin@admin.com, password: admin)
 
 ### 3. Применение миграций
 Создает таблицы в базе данных. Выполнять из корня репозитория:
-\`\`\`bash
+
 # Если миграция еще не создана:
-# dotnet ef migrations add InitialCreate -s src/DvizhX.Api -p src/DvizhX.Infrastructure
+dotnet ef migrations add InitialCreate -s src/DvizhX.Api -p src/DvizhX.Infrastructure
 
 # Если не видит dotnet ef:
 dotnet tool install --global dotnet-ef
-$env:PATH = $env:PATH + ";C:\Users\"name"\.dotnet\tools"
+$env:PATH = $env:PATH + ";C:\Users\{username}\.dotnet\tools"
 
 # Применить миграции:
 dotnet ef database update -s src/DvizhX.Api -p src/DvizhX.Infrastructure
-\`\`\`
 
 ### 4. Запуск API
-\`\`\`bash
 dotnet run --project src/DvizhX.Api
-\`\`\`
-API запустится на \`http://localhost:5xxx\` (см. вывод консоли).
+
+**API запустится на http://localhost:5xxx (см. вывод консоли).**
 
 ---
 
@@ -74,16 +72,16 @@ API запустится на \`http://localhost:5xxx\` (см. вывод кон
 
 ## 📡 SignalR (Real-time)
 
-Хаб доступен по адресу: \`/hubs/kanban\`
-Для подключения требуется Access Token в Query Params: \`?access_token=YOUR_JWT\`
+Хаб доступен по адресу: **/hubs/kanban**
+Для подключения требуется Access Token в Query Params: **?access_token=YOUR_JWT**
 
 **Методы клиента:**
-*   \`JoinBoard(Guid eventId)\` — Подписаться на обновления доски.
-*   \`LeaveBoard(Guid eventId)\` — Отписаться.
+*   JoinBoard(Guid eventId) — Подписаться на обновления доски.
+*   LeaveBoard(Guid eventId) — Отписаться.
 
 **События сервера:**
-*   \`CardCreated\` — Прилетает \`CardDto\`, когда кто-то создал задачу.
-*   \`CardMoved\` — Прилетает \`{ cardId, newColumnId, newIndex }\`, когда задачу перетащили.
+*   CardCreated — Прилетает CardDto, когда кто-то создал задачу.
+*   CardMoved — Прилетает { cardId, newColumnId, newIndex }, когда задачу перетащили.
 
 ---
 
@@ -94,12 +92,12 @@ API запустится на \`http://localhost:5xxx\` (см. вывод кон
 - [x] **Auth:** Регистрация, Логин, Refresh Tokens (Rotation)
 - [x] **Social Auth:** Вход через Google и Telegram
 - [x] **Events:** Создание, Просмотр списка, Детали события (с проверкой прав)
-- [x] **Invites:** Вступление в событие по инвайт-коду (\`/join/{code}\`)
+- [x] **Invites:** Вступление в событие по инвайт-коду (/join/{code})
 - [x] **Kanban (Base):** Авто-создание доски, Просмотр колонок/задач
 - [x] **Kanban (Write):** Создание карточки + SignalR уведомление
 
 ### 🚧 В работе (MVP Phase 2)
-- [ ] **Kanban:** Перемещение карточек (\`MoveCard\`) с пересчетом индексов.
+- [ ] **Kanban:** Перемещение карточек (MoveCard) с пересчетом индексов.
 - [ ] **Kanban:** Редактирование и удаление задач.
 - [ ] **Users:** Загрузка аватарок (интеграция с MinIO/S3).
 - [ ] **Events:** Редактирование события, генерация красивых ссылок.
@@ -117,16 +115,12 @@ API запустится на \`http://localhost:5xxx\` (см. вывод кон
 ## 🔧 Полезные команды
 
 **Очистка проекта (если что-то сломалось):**
-\`\`\`bash
 dotnet clean
 dotnet restore
 dotnet build
-\`\`\`
 
 **Добавление новой миграции:**
-\`\`\`bash
 dotnet ef migrations add <Name> -s src/DvizhX.Api -p src/DvizhX.Infrastructure
-\`\`\`
 
 ---
 
