@@ -1,0 +1,63 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: dvizhx_postgres
+    environment:
+      POSTGRES_DB: main
+      POSTGRES_USER: developer
+      POSTGRES_PASSWORD: developer
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U developer -d main"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dvizhx_internal
+
+  api:
+    build:
+      context: .
+      dockerfile: src/DvizhX.Api/Dockerfile
+    container_name: dvizhx_api
+    restart: always
+    environment:
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=main;Username=developer;Password=developer
+      - ASPNETCORE_ENVIRONMENT=Production
+      - JwtSettings__Secret=super-secret-key-that-is-at-least-32-chars-long-12345
+      - JwtSettings__Issuer=DvizhX
+      - JwtSettings__Audience=DvizhX-Client
+    expose:
+      - "8080"
+    depends_on:
+      - postgres
+    networks:
+      - dvizhx_internal
+      - proxied
+      
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: dvizhx_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - dvizhx_internal
+      - proxied
+
+networks:
+  dvizhx_internal:
+    driver: bridge
+  proxied:
+    external: true
+
+volumes:
+  postgres_data:
+  pgadmin_data:
