@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { LoginPage } from './features/auth/LoginPage';
 import { BoardPage } from './features/kanban/BoardPage';
 import { EventListPage } from './features/events/EventListPage';
+import { RegisterPage } from './features/auth/RegisterPage';
 
 // Защищенный маршрут (проверяет наличие токена)
 const PrivateRoute = ({ children }: { children: JSX.Element}) => {
@@ -15,6 +16,8 @@ function App() {
         <BrowserRouter>
             <Routes>
                 <Route path="/login" element={<LoginPage />} />
+
+                <Route path="/register" element={<RegisterPage />} />
                 
                 {/* Главная - теперь Список событий */}
                 <Route path="/" element={

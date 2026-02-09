@@ -1,7 +1,14 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import apiClient from '../../api/client';
 import type { AuthResponse } from '../../types';
-import { useNavigate } from 'react-router-dom';
+
+import { Container, Paper, TextField, Button, Typography, Box, Alert } from '@mui/material';
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
+
+import { Link as RouterLink } from 'react-router-dom';
+import { Link } from '@mui/material';
+
 
 export const LoginPage = () => {
     const [email, setEmail] = useState('');
@@ -11,7 +18,7 @@ export const LoginPage = () => {
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
-        setError(''); // Сброс старых ошибок
+        setError('');
         
         try {
             console.log('Отправляю запрос на вход...', { email, password });
@@ -20,58 +27,77 @@ export const LoginPage = () => {
                 email,
                 password
             });
-
-            console.log('Ответ сервера:', response.data);
-
-            // ПРОВЕРКА: Как называется поле с токеном?
-            const token = response.data.accessToken; 
-            
-            if (!token) {
-                console.error('ТОКЕН НЕ ПРИШЕЛ! Структура ответа не совпадает с ожидаемой.');
-                setError('Ошибка: Сервер не вернул токен.');
-                return;
-            }
-
-            console.log('Токен получен, сохраняю в localStorage...');
-            localStorage.setItem('token', token);
-            
-            console.log('Перехожу на главную...');
+            localStorage.setItem('token', response.data.accessToken);
             navigate('/'); 
 
         } catch (err: any) {
             console.error('Ошибка при входе:', err);
-            // Если сервер вернул текст ошибки, покажем его
             const message = err.response?.data?.title || err.response?.data || 'Ошибка входа.';
             setError(typeof message === 'string' ? message : JSON.stringify(message));
         }
     };
 
     return (
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '50px' }}>
-            <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', width: '300px', gap: '10px' }}>
-                <h2>Вход в DvizhX</h2>
-                {error && <div style={{ color: 'red' }}>{error}</div>}
-                
-                <input 
-                    type="email" 
-                    placeholder="Email" 
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    required
-                    style={{ padding: '8px' }}
-                />
-                <input 
-                    type="password" 
-                    placeholder="Password" 
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    required
-                    style={{ padding: '8px' }}
-                />
-                <button type="submit" style={{ padding: '10px', cursor: 'pointer' }}>
-                    Войти
-                </button>
-            </form>
-        </div>
+        <Container component="main" maxWidth="xs">
+            <Box
+                sx={{
+                    marginTop: 8,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                }}
+            >
+                <Paper elevation={3} sx={{ padding: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
+                    <Box sx={{ m: 1, bgcolor: 'secondary.main', p: 1, borderRadius: '50%', display: 'flex' }}>
+                         <LockOutlinedIcon sx={{ color: 'white' }} />
+                    </Box>
+                    <Typography component="h1" variant="h5">
+                        Вход в DvizhX
+                    </Typography>
+
+                    <Box component="form" onSubmit={handleLogin} sx={{ mt: 1, width: '100%' }}>
+                        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+                        
+                        <TextField
+                            margin="normal"
+                            required
+                            fullWidth
+                            id="email"
+                            label="Email адрес"
+                            name="email"
+                            autoComplete="email"
+                            autoFocus
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                        />
+                        <TextField
+                            margin="normal"
+                            required
+                            fullWidth
+                            name="password"
+                            label="Пароль"
+                            type="password"
+                            id="password"
+                            autoComplete="current-password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                        />
+                        <Button
+                            type="submit"
+                            fullWidth
+                            variant="contained"
+                            sx={{ mt: 3, mb: 2, height: 50 }}
+                        >
+                            Войти
+                        </Button>
+                        <Box sx={{ textAlign: 'center' }}>
+                            <Link component={RouterLink} to="/register" variant="body2">
+                                {"Нет аккаунта? Зарегистрироваться"}
+                            </Link>
+                        </Box>
+                    </Box>
+                </Paper>
+            </Box>
+        </Container>
     );
 };

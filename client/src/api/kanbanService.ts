@@ -35,5 +35,15 @@ export const kanbanService = {
             startDate
         });
         return response.data;
+    },
+
+    createCard: async (columnId: string, title: string, description?: string) => {
+        // Убедись, что CreateCardCommand на бэкенде принимает эти поля
+        const response = await apiClient.post('/kanban/cards', {
+            columnId,
+            title,
+            description
+        });
+        return response.data;
     }
 };
