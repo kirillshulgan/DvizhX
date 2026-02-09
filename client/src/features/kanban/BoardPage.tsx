@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { kanbanService } from '../../api/kanbanService';
 import type { Board } from '../../types';
 import './BoardPage.css';
+import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 
 import { 
     Box, Typography, Paper, IconButton, AppBar, Toolbar, Button, 
@@ -66,6 +67,51 @@ export const BoardPage = () => {
         }
     };
 
+    const onDragEnd = async (result: DropResult) => {
+        const { destination, source, draggableId } = result;
+
+        // 1. Если бросили мимо или туда же, где была
+        if (!destination) return;
+        if (
+            destination.droppableId === source.droppableId &&
+            destination.index === source.index
+        ) {
+            return;
+        }
+
+        // 2. Оптимистичное обновление UI (чтобы не ждать ответа сервера)
+        // Нам нужно клонировать состояние board и изменить его
+        const newBoard = { ...board! };
+        
+        const sourceColIndex = newBoard.columns.findIndex(c => c.id === source.droppableId);
+        const destColIndex = newBoard.columns.findIndex(c => c.id === destination.droppableId);
+        
+        const sourceCol = newBoard.columns[sourceColIndex];
+        const destCol = newBoard.columns[destColIndex];
+
+        // Достаем карту из старой колонки
+        const [movedCard] = sourceCol.cards.splice(source.index, 1);
+        
+        // Обновляем ID колонки у карты (если перенесли в другую)
+        movedCard.columnId = destCol.id;
+        
+        // Вставляем в новую
+        destCol.cards.splice(destination.index, 0, movedCard);
+
+        // Обновляем стейт сразу
+        setBoard(newBoard);
+
+        // 3. Отправляем запрос на сервер
+        try {
+            await kanbanService.moveCard(draggableId, destination.droppableId, destination.index);
+        } catch (error) {
+            console.error("Failed to move card", error);
+            // Тут по-хорошему надо откатить изменения (loadBoard), если сервер вернул ошибку
+            alert("Ошибка синхронизации! Обновите страницу.");
+            loadBoard(id!);
+        }
+    };
+
     if (loading) return <div>Загрузка доски...</div>;
     if (!board) return <div>Доска не найдена</div>;
 
@@ -85,72 +131,103 @@ export const BoardPage = () => {
             </AppBar>
 
             {/* Область колонок (Горизонтальный скролл) */}
-            <Box sx={{ 
-                flexGrow: 1, 
-                display: 'flex', 
-                overflowX: 'auto', 
-                p: 3, 
-                gap: 3,
-                alignItems: 'flex-start' // Чтобы колонки не растягивались на всю высоту
-            }}>
-                {board.columns
-                    .sort((a, b) => a.orderIndex - b.orderIndex)
-                    .map(column => (
-                    <Paper 
-                        key={column.id} 
-                        elevation={0}
-                        sx={{ 
-                            minWidth: 300, 
-                            maxWidth: 300, 
-                            bgcolor: '#ebecf0', 
-                            p: 2,
-                            maxHeight: '100%',
-                            display: 'flex',
-                            flexDirection: 'column'
-                        }}
-                    >
-                        {/* Заголовок колонки */}
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, alignItems: 'center' }}>
-                            <Typography variant="subtitle1" fontWeight="bold">
-                                {column.title}
-                            </Typography>
-                            <Chip label={column.cards.length} size="small" />
-                        </Box>
-
-                        {/* Список карточек */}
-                        <Stack spacing={1} sx={{ overflowY: 'auto', flexGrow: 1 }}>
-                            {column.cards
-                                .sort((a, b) => a.orderIndex - b.orderIndex)
-                                .map(card => (
-                                <Card key={card.id} sx={{ '&:hover': { bgcolor: '#f9f9f9', cursor: 'pointer' } }}>
-                                    <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
-                                        <Typography variant="body1" fontWeight={500}>
-                                            {card.title}
-                                        </Typography>
-                                        {card.description && (
-                                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-                                                {card.description}
-                                            </Typography>
-                                        )}
-                                        {/* Если назначен юзер - можно показать аватарку тут */}
-                                    </CardContent>
-                                </Card>
-                            ))}
-                        </Stack>
-                        
-                        {/* Кнопка "Добавить карточку" (визуальная заглушка пока) */}
-                        <Button 
-                            startIcon={<AddIcon />}
-                            fullWidth 
-                            sx={{ mt: 1, color: '#5e6c84', justifyContent: 'flex-start', textTransform: 'none' }}
-                            onClick={() => handleOpenCreateDialog(column.id)}
+            <DragDropContext onDragEnd={onDragEnd}>
+                <Box sx={{ 
+                    flexGrow: 1, 
+                    display: 'flex', 
+                    overflowX: 'auto', 
+                    p: 3, 
+                    gap: 3,
+                    alignItems: 'flex-start' 
+                }}>
+                    {board.columns
+                        .sort((a, b) => a.orderIndex - b.orderIndex)
+                        .map(column => (
+                        <Paper 
+                            key={column.id} 
+                            elevation={0}
+                            sx={{ 
+                                minWidth: 300, 
+                                maxWidth: 300, 
+                                bgcolor: '#ebecf0', 
+                                p: 2,
+                                maxHeight: '100%',
+                                display: 'flex',
+                                flexDirection: 'column'
+                            }}
                         >
-                            Добавить карточку
-                        </Button>
-                    </Paper>
-                ))}
-            </Box>
+                            {/* Заголовок колонки */}
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, alignItems: 'center' }}>
+                                <Typography variant="subtitle1" fontWeight="bold">
+                                    {column.title}
+                                </Typography>
+                                <Chip label={column.cards.length} size="small" />
+                            </Box>
 
+                            {/* Droppable Зона - Это список карточек */}
+                            <Droppable droppableId={column.id}>
+                                {(provided) => (
+                                    <Stack
+                                        spacing={1}
+                                        sx={{ overflowY: 'auto', flexGrow: 1, minHeight: 10 }} // minHeight нужен, чтобы можно было бросить в пустую колонку
+                                        ref={provided.innerRef}
+                                        {...provided.droppableProps}
+                                    >
+                                        {column.cards
+                                            // .sort мы здесь УБИРАЕМ, так как порядок должен соответствовать индексам в массиве cards,
+                                            // которые мы мутируем при DnD. Если оставить sort по OrderIndex,
+                                            // карточка будет "прыгать" назад до ответа сервера.
+                                            // Сортировка должна происходить один раз при загрузке (useEffect).
+                                            .map((card, index) => (
+                                            
+                                            <Draggable key={card.id} draggableId={card.id} index={index}>
+                                                {(provided, snapshot) => (
+                                                    <Card
+                                                        ref={provided.innerRef}
+                                                        {...provided.draggableProps}
+                                                        {...provided.dragHandleProps}
+                                                        sx={{ 
+                                                            cursor: 'grab',
+                                                            bgcolor: snapshot.isDragging ? '#e3f2fd' : 'white', // Подсветка при перетаскивании
+                                                            boxShadow: snapshot.isDragging ? 3 : 1,
+                                                            transition: 'background-color 0.2s, box-shadow 0.2s',
+                                                            // Обязательно сохраняем стили от библиотеки (трансформации)
+                                                            ...provided.draggableProps.style 
+                                                        }}
+                                                    >
+                                                        <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+                                                            <Typography variant="body1" fontWeight={500}>
+                                                                {card.title}
+                                                            </Typography>
+                                                            {card.description && (
+                                                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                                                                    {card.description}
+                                                                </Typography>
+                                                            )}
+                                                        </CardContent>
+                                                    </Card>
+                                                )}
+                                            </Draggable>
+
+                                        ))}
+                                        {provided.placeholder} {/* Заглушка, растягивающая список во время драга */}
+                                    </Stack>
+                                )}
+                            </Droppable>
+                            
+                            {/* Кнопка "Добавить карточку" */}
+                            <Button 
+                                startIcon={<AddIcon />}
+                                fullWidth 
+                                sx={{ mt: 1, color: '#5e6c84', justifyContent: 'flex-start', textTransform: 'none' }}
+                                onClick={() => handleOpenCreateDialog(column.id)}
+                            >
+                                Добавить карточку
+                            </Button>
+                        </Paper>
+                    ))}
+                </Box>
+            </DragDropContext>
             <Dialog open={isDialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
                 <DialogTitle>Новая задача</DialogTitle>
                 <DialogContent>

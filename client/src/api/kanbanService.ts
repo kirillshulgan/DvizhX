@@ -45,5 +45,15 @@ export const kanbanService = {
             description
         });
         return response.data;
+    },
+
+    moveCard: async (cardId: string, targetColumnId: string, newOrderIndex: number) => {
+        // У нас уже есть MoveCardCommand на бэкенде
+        const response = await apiClient.put('/kanban/cards/move', {
+            cardId,
+            targetColumnId,
+            newOrderIndex
+        });
+        return response.data;
     }
 };
