@@ -10,7 +10,7 @@ const apiClient = axios.create({
 
 // Interceptor: перед отправкой каждого запроса
 apiClient.interceptors.request.use((config) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('accessToken');
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
     }
@@ -25,7 +25,7 @@ apiClient.interceptors.response.use((response) => {
 }, (error) => {
     if (error.response && error.response.status === 401) {
         // Токен протух или неверен — выкидываем на логин
-        localStorage.removeItem('token');
+        localStorage.removeItem('accessToken');
         window.location.href = '/login';
     }
     return Promise.reject(error);

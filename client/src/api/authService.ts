@@ -1,16 +1,14 @@
 import apiClient from './client';
-import type { AuthResponse } from '../types';
+import type { AuthResponse, LoginRequest, RegisterRequest } from '../types'; 
 
 export const authService = {
-    login: async (data: any) => {
-        const response = await apiClient.post<AuthResponse>('/auth/login', data);
+    login: async (payload: LoginRequest): Promise<AuthResponse> => {
+        const response = await apiClient.post<AuthResponse>('/auth/login', payload);
         return response.data;
     },
 
-    register: async (data: any) => {
-        // Предполагаем, что бэкенд на /auth/register возвращает токен, как и при логине.
-        // Если бэкенд возвращает просто 200 OK, то логику придется чуть изменить (редирект на логин).
-        const response = await apiClient.post<AuthResponse>('/auth/register', data);
+    register: async (payload: RegisterRequest): Promise<AuthResponse> => {
+        const response = await apiClient.post<AuthResponse>('/auth/register', payload);
         return response.data;
     }
 };

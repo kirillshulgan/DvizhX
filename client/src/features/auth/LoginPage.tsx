@@ -1,39 +1,54 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import apiClient from '../../api/client';
-import type { AuthResponse } from '../../types';
-
-import { Container, Paper, TextField, Button, Typography, Box, Alert } from '@mui/material';
+import { useNavigate, Link as RouterLink } from 'react-router-dom';
+import { 
+    Container, Paper, TextField, Button, Typography, Box, Alert, Link 
+} from '@mui/material';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
+import { AxiosError } from 'axios';
 
-import { Link as RouterLink } from 'react-router-dom';
-import { Link } from '@mui/material';
-
+import { authService } from '../../api/authService';
+import type { LoginRequest } from '../../types'; 
 
 export const LoginPage = () => {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
+    const [formData, setFormData] = useState<LoginRequest>({
+        email: '',
+        password: ''
+    });
+    
+    const [error, setError] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
+    
     const navigate = useNavigate();
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: value
+        }));
+    };
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
-        setError('');
-        
-        try {
-            console.log('Отправляю запрос на вход...', { email, password });
-            
-            const response = await apiClient.post<AuthResponse>('/auth/login', {
-                email,
-                password
-            });
-            localStorage.setItem('token', response.data.accessToken);
-            navigate('/'); 
+        setError(null);
+        setIsLoading(true);
 
-        } catch (err: any) {
-            console.error('Ошибка при входе:', err);
-            const message = err.response?.data?.title || err.response?.data || 'Ошибка входа.';
-            setError(typeof message === 'string' ? message : JSON.stringify(message));
+        try {
+            const response = await authService.login(formData);
+            localStorage.setItem('accessToken', response.accessToken);
+            
+            navigate('/');
+        } catch (err) {
+            console.error('Login failed', err);
+            
+            if (err instanceof AxiosError && err.response?.data) {
+                const data = err.response.data;
+                setError(data.title || data.message || 'Ошибка входа. Проверьте данные.');
+            } else {
+                setError('Произошла неизвестная ошибка.');
+            }
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -67,8 +82,9 @@ export const LoginPage = () => {
                             name="email"
                             autoComplete="email"
                             autoFocus
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
+                            value={formData.email}
+                            onChange={handleChange}
+                            disabled={isLoading}
                         />
                         <TextField
                             margin="normal"
@@ -79,20 +95,22 @@ export const LoginPage = () => {
                             type="password"
                             id="password"
                             autoComplete="current-password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
+                            value={formData.password}
+                            onChange={handleChange}
+                            disabled={isLoading}
                         />
                         <Button
                             type="submit"
                             fullWidth
                             variant="contained"
+                            disabled={isLoading}
                             sx={{ mt: 3, mb: 2, height: 50 }}
                         >
-                            Войти
+                            {isLoading ? 'Вход...' : 'Войти'}
                         </Button>
                         <Box sx={{ textAlign: 'center' }}>
                             <Link component={RouterLink} to="/register" variant="body2">
-                                {"Нет аккаунта? Зарегистрироваться"}
+                                Нет аккаунта? Зарегистрироваться
                             </Link>
                         </Box>
                     </Box>

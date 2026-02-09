@@ -1,270 +1,355 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { kanbanService } from '../../api/kanbanService';
-import type { Board } from '../../types';
-import './BoardPage.css';
-import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
-
 import { 
     Box, Typography, Paper, IconButton, AppBar, Toolbar, Button, 
-    Card, CardContent, Chip, Stack,
-    Dialog, DialogTitle, DialogContent, DialogActions, TextField 
+    Card as MuiCard, CardContent, Chip, Stack,
+    Dialog, DialogTitle, DialogContent, DialogActions, TextField,
+    CircularProgress 
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AddIcon from '@mui/icons-material/Add';
-// import MoreHorizIcon from '@mui/icons-material/MoreHoriz'; // Иконка "меню" карточки (на будущее)
+import DeleteIcon from '@mui/icons-material/DeleteOutline';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
+
+import { kanbanService } from '../../api/kanbanService';
+import { eventService } from '../../api/eventService';
+import { signalRService } from '../../api/signalrService';
+import type { Board, Card } from '../../types';
+
+// Интерфейс для формы создания/редактирования
+interface CardFormData {
+    title: string;
+    description: string;
+}
 
 export const BoardPage = () => {
-    const { id } = useParams(); // <--- Читаем ID из URL
+    const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    
     const [board, setBoard] = useState<Board | null>(null);
     const [loading, setLoading] = useState(true);
 
+    // Dialog State
     const [isDialogOpen, setDialogOpen] = useState(false);
     const [targetColumnId, setTargetColumnId] = useState<string | null>(null);
-    const [newCard, setNewCard] = useState({ title: '', description: '' });
+    const [editingCardId, setEditingCardId] = useState<string | null>(null);
+    const [cardForm, setCardForm] = useState<CardFormData>({ title: '', description: '' });
+    
+    const [inviteCode, setInviteCode] = useState<string | null>(null);
+
+    // --- Loading Logic ---
+
+    const loadBoard = useCallback(async (boardId: string, silent = false) => {
+        if (!silent) setLoading(true);
+        try {
+            const boardData = await kanbanService.getBoard(boardId);
+            
+            // Сортировка (лучше делать на бэке, но ок)
+            // Создаем копию массива, чтобы сортировать (т.к. в типах у нас readonly)
+            const sortedColumns = [...boardData.columns].sort((a, b) => a.orderIndex - b.orderIndex).map(col => ({
+                ...col,
+                cards: [...col.cards].sort((a, b) => a.orderIndex - b.orderIndex)
+            }));
+            
+            setBoard({ ...boardData, columns: sortedColumns });
+
+            if (boardData.eventId) {
+                // Пытаемся получить код приглашения, но не блокируем UI ошибкой
+                eventService.getEventById(boardData.eventId)
+                    .then(evt => setInviteCode(evt.inviteCode || null))
+                    .catch(console.error);
+            }
+
+        } catch (err) {
+            console.error("Failed to load board", err);
+            // Можно добавить редирект или тостер
+        } finally {
+            if (!silent) setLoading(false);
+        }
+    }, []);
+
+    // --- Effects ---
 
     useEffect(() => {
-        if (id) {
-            loadBoard(id);
-        }
-    }, [id]);
+        if (id) loadBoard(id, false);
+    }, [id, loadBoard]);
 
-    const loadBoard = async (id: string) => {
-        try {
-            setLoading(true);
-            const data = await kanbanService.getBoard(id);
-            setBoard(data);
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setLoading(false);
-        }
-    };
+    useEffect(() => {
+        if (!board?.eventId) return;
+        const token = localStorage.getItem('accessToken'); // Используем правильный ключ
+        if (!token) return;
 
-    // Открыть окно создания для конкретной колонки
+        const startSocket = async () => {
+            await signalRService.startConnection(token);
+            await signalRService.joinEvent(board.eventId);
+
+            // Handler for all card events
+            const handleUpdate = () => {
+                if (board.id) {
+                    console.log("SignalR update received");
+                    loadBoard(board.id, true);
+                }
+            };
+
+            signalRService.on('ReceiveCardMoved', handleUpdate);
+            signalRService.on('ReceiveCardCreated', handleUpdate);
+            signalRService.on('ReceiveCardDeleted', handleUpdate);
+            signalRService.on('ReceiveCardUpdated', handleUpdate);
+        };
+
+        startSocket();
+
+        return () => {
+            signalRService.leaveEvent(board.eventId);
+            signalRService.stopConnection();
+            signalRService.off('ReceiveCardMoved');
+            signalRService.off('ReceiveCardCreated');
+            signalRService.off('ReceiveCardDeleted');
+            signalRService.off('ReceiveCardUpdated');
+        };
+    }, [board?.eventId, board?.id, loadBoard]);
+
+
+    // --- Handlers ---
+
     const handleOpenCreateDialog = (columnId: string) => {
         setTargetColumnId(columnId);
-        setNewCard({ title: '', description: '' }); // Чистим форму
+        setEditingCardId(null);
+        setCardForm({ title: '', description: '' });
         setDialogOpen(true);
     };
 
-    // Отправить данные на сервер
-    const handleCreateCard = async () => {
-        if (!targetColumnId || !newCard.title) return;
+    const handleOpenEditDialog = (card: Card) => {
+        setEditingCardId(card.id);
+        setCardForm({ title: card.title, description: card.description });
+        setDialogOpen(true);
+    };
+
+    const handleSaveCard = async () => {
+        if (!cardForm.title.trim()) return;
 
         try {
-            await kanbanService.createCard(targetColumnId, newCard.title, newCard.description);
+            if (editingCardId) {
+                await kanbanService.updateCard(editingCardId, {
+                    title: cardForm.title,
+                    description: cardForm.description
+                });
+            } else if (targetColumnId) {
+                await kanbanService.createCard({
+                    columnId: targetColumnId,
+                    title: cardForm.title,
+                    description: cardForm.description
+                });
+            }
+            
+            // Ждем SignalR или обновляем вручную
+            if (id) loadBoard(id, true);
             setDialogOpen(false);
-            
-            // Перезагружаем доску, чтобы увидеть новую карту
-            // (В идеале лучше обновлять стейт локально, но пока так проще)
-            if (id) loadBoard(id); 
-            
+        } catch (error) {
+            console.error("Save failed", error);
+            alert("Ошибка сохранения");
+        }
+    };
+
+    const handleDeleteCard = async (cardId: string) => {
+        if (!confirm('Удалить эту задачу?')) return;
+
+        // Optimistic UI Update (Immutably)
+        if (board) {
+            const newColumns = board.columns.map(col => ({
+                ...col,
+                cards: col.cards.filter(c => c.id !== cardId)
+            }));
+            setBoard({ ...board, columns: newColumns });
+        }
+
+        try {
+            await kanbanService.deleteCard(cardId);
         } catch (error) {
             console.error(error);
-            alert("Ошибка при создании карточки");
+            alert("Не удалось удалить карточку");
+            if (id) loadBoard(id, true); // Revert
         }
     };
 
     const onDragEnd = async (result: DropResult) => {
         const { destination, source, draggableId } = result;
-
-        // 1. Если бросили мимо или туда же, где была
-        if (!destination) return;
-        if (
-            destination.droppableId === source.droppableId &&
-            destination.index === source.index
-        ) {
-            return;
-        }
-
-        // 2. Оптимистичное обновление UI (чтобы не ждать ответа сервера)
-        // Нам нужно клонировать состояние board и изменить его
-        const newBoard = { ...board! };
+        if (!destination || !board) return;
         
-        const sourceColIndex = newBoard.columns.findIndex(c => c.id === source.droppableId);
-        const destColIndex = newBoard.columns.findIndex(c => c.id === destination.droppableId);
-        
-        const sourceCol = newBoard.columns[sourceColIndex];
-        const destCol = newBoard.columns[destColIndex];
+        if (destination.droppableId === source.droppableId && destination.index === source.index) return;
 
-        // Достаем карту из старой колонки
+        // --- Optimistic Update (Immutable way) ---
+        const sourceColIndex = board.columns.findIndex(c => c.id === source.droppableId);
+        const destColIndex = board.columns.findIndex(c => c.id === destination.droppableId);
+
+        if (sourceColIndex === -1 || destColIndex === -1) return;
+
+        const newColumns = [...board.columns];
+        
+        // Создаем копии колонок, которые меняем
+        const sourceCol = { ...newColumns[sourceColIndex], cards: [...newColumns[sourceColIndex].cards] };
+        
+        // Если колонка та же самая, используем одну ссылку
+        const destCol = sourceColIndex === destColIndex 
+            ? sourceCol 
+            : { ...newColumns[destColIndex], cards: [...newColumns[destColIndex].cards] };
+
+        // Логика перемещения
         const [movedCard] = sourceCol.cards.splice(source.index, 1);
         
-        // Обновляем ID колонки у карты (если перенесли в другую)
-        movedCard.columnId = destCol.id;
+        // Обновляем columnId у карточки (хотя API это сделает, для UI полезно)
+        // Но так как у нас readonly Card, создаем новый объект карточки
+        const updatedCard = { ...movedCard, columnId: destination.droppableId };
         
-        // Вставляем в новую
-        destCol.cards.splice(destination.index, 0, movedCard);
+        destCol.cards.splice(destination.index, 0, updatedCard);
 
-        // Обновляем стейт сразу
-        setBoard(newBoard);
+        newColumns[sourceColIndex] = sourceCol;
+        newColumns[destColIndex] = destCol;
 
-        // 3. Отправляем запрос на сервер
+        setBoard({ ...board, columns: newColumns });
+
+        // --- API Call ---
         try {
-            await kanbanService.moveCard(draggableId, destination.droppableId, destination.index);
+            await kanbanService.moveCard({
+                cardId: draggableId,
+                targetColumnId: destination.droppableId,
+                newOrderIndex: destination.index
+            });
         } catch (error) {
-            console.error("Failed to move card", error);
-            // Тут по-хорошему надо откатить изменения (loadBoard), если сервер вернул ошибку
-            alert("Ошибка синхронизации! Обновите страницу.");
-            loadBoard(id!);
+            console.error("Move failed", error);
+            if (id) loadBoard(id, true); // Revert
         }
     };
 
-    if (loading) return <div>Загрузка доски...</div>;
+
+    if (loading) return (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+            <CircularProgress />
+        </Box>
+    );
+    
     if (!board) return <div>Доска не найдена</div>;
 
     return (
         <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column', bgcolor: '#f4f5f7' }}>
-            {/* Шапка доски */}
             <AppBar position="static" color="default" elevation={1}>
                 <Toolbar>
-                    <IconButton edge="start" color="inherit" onClick={() => navigate('/')} sx={{ mr: 2 }}>
+                    <IconButton edge="start" onClick={() => navigate('/')} sx={{ mr: 2 }}>
                         <ArrowBackIcon />
                     </IconButton>
                     <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
                         {board.title}
                     </Typography>
-                    {/* Сюда можно добавить кнопку "Пригласить" */}
+                    
+                    <Button 
+                        color="inherit" 
+                        startIcon={<PersonAddIcon />}
+                        onClick={() => {
+                            if (inviteCode) {
+                                navigator.clipboard.writeText(inviteCode);
+                                alert(`Код скопирован: ${inviteCode}`);
+                            } else {
+                                alert("Нет кода приглашения");
+                            }
+                        }}
+                    >
+                        Пригласить
+                    </Button>
                 </Toolbar>
             </AppBar>
 
-            {/* Область колонок (Горизонтальный скролл) */}
             <DragDropContext onDragEnd={onDragEnd}>
-                <Box sx={{ 
-                    flexGrow: 1, 
-                    display: 'flex', 
-                    overflowX: 'auto', 
-                    p: 3, 
-                    gap: 3,
-                    alignItems: 'flex-start' 
-                }}>
-                    {board.columns
-                        .sort((a, b) => a.orderIndex - b.orderIndex)
-                        .map(column => (
-                        <Paper 
-                            key={column.id} 
-                            elevation={0}
-                            sx={{ 
-                                minWidth: 300, 
-                                maxWidth: 300, 
-                                bgcolor: '#ebecf0', 
-                                p: 2,
-                                maxHeight: '100%',
-                                display: 'flex',
-                                flexDirection: 'column'
-                            }}
-                        >
-                            {/* Заголовок колонки */}
+                <Box sx={{ flexGrow: 1, display: 'flex', overflowX: 'auto', p: 3, gap: 3, alignItems: 'flex-start' }}>
+                    {board.columns.map(column => (
+                        <Paper key={column.id} elevation={0} sx={{ minWidth: 300, maxWidth: 300, bgcolor: '#ebecf0', p: 2, maxHeight: 'calc(100vh - 100px)', display: 'flex', flexDirection: 'column' }}>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, alignItems: 'center' }}>
-                                <Typography variant="subtitle1" fontWeight="bold">
-                                    {column.title}
-                                </Typography>
+                                <Typography variant="subtitle1" fontWeight="bold">{column.title}</Typography>
                                 <Chip label={column.cards.length} size="small" />
                             </Box>
 
-                            {/* Droppable Зона - Это список карточек */}
                             <Droppable droppableId={column.id}>
                                 {(provided) => (
-                                    <Stack
-                                        spacing={1}
-                                        sx={{ overflowY: 'auto', flexGrow: 1, minHeight: 10 }} // minHeight нужен, чтобы можно было бросить в пустую колонку
-                                        ref={provided.innerRef}
+                                    <Stack 
+                                        spacing={1} 
+                                        sx={{ overflowY: 'auto', flexGrow: 1, minHeight: 10 }} 
+                                        ref={provided.innerRef} 
                                         {...provided.droppableProps}
                                     >
-                                        {column.cards
-                                            // .sort мы здесь УБИРАЕМ, так как порядок должен соответствовать индексам в массиве cards,
-                                            // которые мы мутируем при DnD. Если оставить sort по OrderIndex,
-                                            // карточка будет "прыгать" назад до ответа сервера.
-                                            // Сортировка должна происходить один раз при загрузке (useEffect).
-                                            .map((card, index) => (
-                                            
+                                        {column.cards.map((card, index) => (
                                             <Draggable key={card.id} draggableId={card.id} index={index}>
                                                 {(provided, snapshot) => (
-                                                    <Card
+                                                    <MuiCard
                                                         ref={provided.innerRef}
                                                         {...provided.draggableProps}
                                                         {...provided.dragHandleProps}
+                                                        onClick={() => handleOpenEditDialog(card)} 
                                                         sx={{ 
                                                             cursor: 'grab',
-                                                            bgcolor: snapshot.isDragging ? '#e3f2fd' : 'white', // Подсветка при перетаскивании
+                                                            bgcolor: snapshot.isDragging ? '#e3f2fd' : 'white',
                                                             boxShadow: snapshot.isDragging ? 3 : 1,
-                                                            transition: 'background-color 0.2s, box-shadow 0.2s',
-                                                            // Обязательно сохраняем стили от библиотеки (трансформации)
                                                             ...provided.draggableProps.style 
                                                         }}
                                                     >
-                                                        <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
-                                                            <Typography variant="body1" fontWeight={500}>
-                                                                {card.title}
-                                                            </Typography>
-                                                            {card.description && (
-                                                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-                                                                    {card.description}
-                                                                </Typography>
-                                                            )}
+                                                        <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 }, position: 'relative', pr: 4 }}>
+                                                            <IconButton 
+                                                                size="small" 
+                                                                sx={{ position: 'absolute', top: 4, right: 4, opacity: 0.6, '&:hover': { opacity: 1, color: 'error.main' } }}
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleDeleteCard(card.id);
+                                                                }}
+                                                            >
+                                                                <DeleteIcon fontSize="small" />
+                                                            </IconButton>
+                                                            <Typography variant="body1" fontWeight={500}>{card.title}</Typography>
+                                                            {card.description && <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5, whiteSpace: 'pre-wrap' }}>{card.description}</Typography>}
                                                         </CardContent>
-                                                    </Card>
+                                                    </MuiCard>
                                                 )}
                                             </Draggable>
-
                                         ))}
-                                        {provided.placeholder} {/* Заглушка, растягивающая список во время драга */}
+                                        {provided.placeholder}
                                     </Stack>
                                 )}
                             </Droppable>
-                            
-                            {/* Кнопка "Добавить карточку" */}
-                            <Button 
-                                startIcon={<AddIcon />}
-                                fullWidth 
-                                sx={{ mt: 1, color: '#5e6c84', justifyContent: 'flex-start', textTransform: 'none' }}
-                                onClick={() => handleOpenCreateDialog(column.id)}
-                            >
+
+                            <Button startIcon={<AddIcon />} fullWidth sx={{ mt: 1, color: '#5e6c84', justifyContent: 'flex-start' }} onClick={() => handleOpenCreateDialog(column.id)}>
                                 Добавить карточку
                             </Button>
                         </Paper>
                     ))}
                 </Box>
             </DragDropContext>
+
+            {/* Dialog Component logic kept inline for simplicity, but cleaner */}
             <Dialog open={isDialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
-                <DialogTitle>Новая задача</DialogTitle>
+                <DialogTitle>{editingCardId ? 'Редактирование' : 'Новая задача'}</DialogTitle>
                 <DialogContent>
                     <TextField
                         autoFocus
                         margin="dense"
-                        label="Заголовок задачи"
+                        label="Заголовок"
                         fullWidth
-                        variant="outlined"
-                        value={newCard.title}
-                        onChange={(e) => setNewCard({ ...newCard, title: e.target.value })}
-                        // Чтобы можно было отправить по Enter
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleCreateCard();
-                        }}
+                        value={cardForm.title}
+                        onChange={(e) => setCardForm({ ...cardForm, title: e.target.value })}
+                        onKeyDown={(e) => e.key === 'Enter' && handleSaveCard()}
                     />
                     <TextField
                         margin="dense"
-                        label="Описание (необязательно)"
+                        label="Описание"
                         fullWidth
                         multiline
                         rows={3}
-                        variant="outlined"
-                        value={newCard.description}
-                        onChange={(e) => setNewCard({ ...newCard, description: e.target.value })}
+                        value={cardForm.description}
+                        onChange={(e) => setCardForm({ ...cardForm, description: e.target.value })}
                     />
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={() => setDialogOpen(false)} color="inherit">
-                        Отмена
-                    </Button>
-                    <Button onClick={handleCreateCard} variant="contained" disabled={!newCard.title}>
-                        Создать
-                    </Button>
+                    <Button onClick={() => setDialogOpen(false)}>Отмена</Button>
+                    <Button onClick={handleSaveCard} variant="contained" disabled={!cardForm.title}>Сохранить</Button>
                 </DialogActions>
             </Dialog>
-
         </Box>
     );
 };

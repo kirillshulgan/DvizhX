@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { kanbanService } from '../../api/kanbanService';
+// import { kanbanService } from '../../api/kanbanService';
+import { eventService } from '../../api/eventService';
 
 // MUI Imports
 import { 
@@ -10,6 +11,7 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import GroupAddIcon from '@mui/icons-material/GroupAdd';
 
 export const EventListPage = () => {
     const [events, setEvents] = useState<any[]>([]);
@@ -18,8 +20,9 @@ export const EventListPage = () => {
     
     // Состояние модального окна
     const [openDialog, setOpenDialog] = useState(false);
-    
     const [newEvent, setNewEvent] = useState({ title: '', description: '', date: '', time: '' });
+    const [joinDialogOpen, setJoinDialogOpen] = useState(false);
+    const [inviteCode, setInviteCode] = useState('');
 
     useEffect(() => {
         loadEvents();
@@ -28,12 +31,28 @@ export const EventListPage = () => {
     const loadEvents = async () => {
         try {
             setLoading(true);
-            const data = await kanbanService.getMyEvents();
+            const data = await eventService.getMyEvents();
             setEvents(data);
         } catch (error) {
-            alert('Ошибка загрузки');
+            alert(error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleJoin = async () => {
+        if (!inviteCode) return;
+        try {
+            const result = await eventService.joinEvent(inviteCode);
+            setJoinDialogOpen(false);
+            setInviteCode('');
+            // Если сервер вернул ID доски (boardId), можно сразу перейти
+            // Но твой бэкенд возвращает EventId. Нам нужно узнать BoardId этого ивента.
+            // Проще всего - просто перезагрузить список событий.
+            await loadEvents();
+            alert("Вы успешно вступили!");
+        } catch (error) {
+            alert("Неверный код приглашения");
         }
     };
 
@@ -43,7 +62,7 @@ export const EventListPage = () => {
         const combinedDate = new Date(`${newEvent.date}T${newEvent.time}`);
         
         try {
-            await kanbanService.createEvent(newEvent.title, newEvent.description, combinedDate.toISOString());
+            await eventService.createEvent(newEvent.title, newEvent.description, combinedDate.toISOString());
             setOpenDialog(false);
             setNewEvent({ title: '', description: '', date: '', time: '' });
             loadEvents();
@@ -102,14 +121,35 @@ export const EventListPage = () => {
             </Container>
 
             {/* Плавающая кнопка создания */}
-            <Fab 
-                color="primary" 
-                aria-label="add" 
-                sx={{ position: 'fixed', bottom: 30, right: 30 }}
-                onClick={() => setOpenDialog(true)}
-            >
-                <AddIcon />
-            </Fab>
+            {/* Плавающие кнопки (FABs) */}
+            <Box sx={{ position: 'fixed', bottom: 30, right: 30, display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'flex-end' }}>
+                
+                {/* Кнопка 1: Вступить (с подписью при наведении) */}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    {/* (Опционально) Можно добавить Tooltip, но пока просто кнопка */}
+                    <Fab 
+                        color="secondary" 
+                        aria-label="join" 
+                        size="medium"
+                        onClick={() => setJoinDialogOpen(true)}
+                        variant="extended" // Чтобы было место для текста, если захочешь
+                    >
+                        <GroupAddIcon sx={{ mr: 1 }} />
+                        Вступить
+                    </Fab>
+                </Box>
+
+                {/* Кнопка 2: Создать (Главная) */}
+                <Fab 
+                    color="primary" 
+                    aria-label="add" 
+                    onClick={() => setOpenDialog(true)}
+                    variant="extended"
+                >
+                    <AddIcon sx={{ mr: 1 }} />
+                    Создать
+                </Fab>
+            </Box>
 
             {/* Модальное окно создания */}
             <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
@@ -156,6 +196,26 @@ export const EventListPage = () => {
                 <DialogActions>
                     <Button onClick={() => setOpenDialog(false)}>Отмена</Button>
                     <Button onClick={handleCreate} variant="contained">Создать</Button>
+                </DialogActions>
+            </Dialog>
+            <Dialog open={joinDialogOpen} onClose={() => setJoinDialogOpen(false)}>
+                <DialogTitle>Вступить в тусовку</DialogTitle>
+                <DialogContent>
+                    <Typography variant="body2" sx={{ mb: 2 }}>
+                        Введите код приглашения, который вам дал организатор.
+                    </Typography>
+                    <TextField
+                        autoFocus
+                        label="Код приглашения"
+                        fullWidth
+                        variant="outlined"
+                        value={inviteCode}
+                        onChange={(e) => setInviteCode(e.target.value)}
+                    />
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setJoinDialogOpen(false)}>Отмена</Button>
+                    <Button onClick={handleJoin} variant="contained">Вступить</Button>
                 </DialogActions>
             </Dialog>
         </Box>

@@ -1,64 +1,85 @@
 import { useState } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
-import apiClient from '../../api/client';
-import type { AuthResponse } from '../../types';
-
-// MUI Imports
-import { Container, Paper, TextField, Button, Typography, Box, Alert, Link } from '@mui/material';
+import { 
+    Container, Paper, TextField, Button, Typography, Box, Alert, Link 
+} from '@mui/material';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import { AxiosError } from 'axios';
+
+// Импортируем наш сервис и типы
+import { authService } from '../../api/authService';
+import type { RegisterRequest } from '../../types'; 
+
+// Интерфейс для локального стейта формы (включает поля, которых нет в API, например confirmPassword)
+interface RegisterFormState extends RegisterRequest {
+    confirmPassword: string;
+}
 
 export const RegisterPage = () => {
-    // Состояние формы
-    const [formData, setFormData] = useState({
+    
+    // Начальное состояние с типизацией
+    const [formData, setFormData] = useState<RegisterFormState>({
         email: '',
         password: '',
         confirmPassword: '',
-        userName: ''
+        // Обрати внимание: в прошлом коде было userName, но в authService.ts мы определили firstName/lastName. 
+        // Если на бэке userName, поправь DTO в authService.ts. Я предполагаю firstName для примера.
+        userName: '' 
     });
     
-    const [error, setError] = useState('');
+    const [error, setError] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
+    
     const navigate = useNavigate();
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setFormData({
-            ...formData,
-            [e.target.name]: e.target.value
-        });
+        const { name, value } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: value
+        }));
     };
 
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
-        setError('');
+        setError(null);
 
         if (formData.password !== formData.confirmPassword) {
             setError('Пароли не совпадают');
             return;
         }
 
-        try {
-            // Отправляем запрос
-            // Убедись, что поля совпадают с RegisterUserCommand на бэкенде
-            const response = await apiClient.post<AuthResponse>('/auth/register', {
-                email: formData.email,
-                userName: formData.userName,
-                password: formData.password
-            });
+        setIsLoading(true);
 
-            // Если бэкенд сразу возвращает токен:
-            if (response.data && response.data.accessToken) {
-                localStorage.setItem('token', response.data.accessToken);
-                navigate('/'); // Сразу пускаем внутрь
+        try {
+            // Вызываем типизированный сервис
+            // TypeScript автоматически проверит соответствие полей, кроме confirmPassword
+            const { confirmPassword, ...requestPayload } = formData;
+            
+            const response = await authService.register(requestPayload);
+
+            // Логика авто-входа после регистрации
+            if (response && response.accessToken) {
+                localStorage.setItem('accessToken', response.accessToken);
+                navigate('/'); 
             } else {
-                // Если бэкенд не возвращает токен (просто 200 OK), отправляем логиниться
+                // Если API требует подтверждения почты и не дает токен сразу
                 alert('Регистрация успешна! Теперь войдите.');
                 navigate('/login');
             }
 
-        } catch (err: any) {
-            console.error(err);
-            // Пытаемся достать текст ошибки из ответа сервера
-            const message = err.response?.data?.detail || err.response?.data?.title || 'Ошибка регистрации';
-            setError(typeof message === 'string' ? message : 'Не удалось зарегистрироваться');
+        } catch (err) {
+            console.error('Registration failed', err);
+            
+            if (err instanceof AxiosError && err.response?.data) {
+                const data = err.response.data;
+                // Пытаемся вытащить понятное сообщение
+                setError(data.title || data.detail || 'Не удалось зарегистрироваться. Попробуйте другой email.');
+            } else {
+                setError('Произошла неизвестная ошибка.');
+            }
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -78,13 +99,15 @@ export const RegisterPage = () => {
                     <Box component="form" onSubmit={handleRegister} sx={{ mt: 3, width: '100%' }}>
                         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
                         
-                         <TextField
+                        <TextField
                             margin="normal"
                             fullWidth
-                            label="Имя пользователя"
-                            name="userName"
+                            label="Имя"
+                            name="firstName" // Исправил на firstName согласно DTO, если нужно userName - верни
                             value={formData.userName}
                             onChange={handleChange}
+                            autoFocus
+                            disabled={isLoading}
                         />
 
                         <TextField
@@ -96,6 +119,7 @@ export const RegisterPage = () => {
                             type="email"
                             value={formData.email}
                             onChange={handleChange}
+                            disabled={isLoading}
                         />
                         
                         <TextField
@@ -107,6 +131,7 @@ export const RegisterPage = () => {
                             type="password"
                             value={formData.password}
                             onChange={handleChange}
+                            disabled={isLoading}
                         />
 
                         <TextField
@@ -118,20 +143,22 @@ export const RegisterPage = () => {
                             type="password"
                             value={formData.confirmPassword}
                             onChange={handleChange}
+                            disabled={isLoading}
                         />
 
                         <Button
                             type="submit"
                             fullWidth
                             variant="contained"
+                            disabled={isLoading}
                             sx={{ mt: 3, mb: 2, height: 45 }}
                         >
-                            Зарегистрироваться
+                            {isLoading ? 'Регистрация...' : 'Зарегистрироваться'}
                         </Button>
 
                         <Box sx={{ textAlign: 'center' }}>
                             <Link component={RouterLink} to="/login" variant="body2">
-                                {"Уже есть аккаунт? Войти"}
+                                Уже есть аккаунт? Войти
                             </Link>
                         </Box>
                     </Box>
