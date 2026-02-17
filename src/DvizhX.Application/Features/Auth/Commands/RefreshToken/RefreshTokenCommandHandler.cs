@@ -3,6 +3,7 @@ using DvizhX.Application.Common.Interfaces.Persistence;
 using DvizhX.Application.Features.Auth.Common;
 using MediatR;
 using Microsoft.IdentityModel.JsonWebTokens;
+using System.Security.Claims;
 
 namespace DvizhX.Application.Features.Auth.Commands.RefreshToken
 {
@@ -23,7 +24,7 @@ namespace DvizhX.Application.Features.Auth.Commands.RefreshToken
 
             // 2. Извлекаем Claims
             //var userId = principal.FindFirstValue(JwtRegisteredClaimNames.Sub); //TODO: Почему не работает?
-            var userId = principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+            var userId = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             //var jti = principal.FindFirstValue(JwtRegisteredClaimNames.Jti);
             var jti = principal.FindFirst(JwtRegisteredClaimNames.Jti)?.Value; // ID токена
 

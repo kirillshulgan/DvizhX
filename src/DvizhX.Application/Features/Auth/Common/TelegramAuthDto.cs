@@ -1,13 +1,28 @@
-﻿namespace DvizhX.Application.Features.Auth.Common
+﻿using System.Text.Json.Serialization;
+
+namespace DvizhX.Application.Features.Auth.Common
 {
     public record TelegramAuthDto
     {
+        [JsonPropertyName("id")]
         public long Id { get; init; }
-        public string? First_name { get; init; }
-        public string? Last_name { get; init; }
+
+        [JsonPropertyName("first_name")]
+        public string? FirstName { get; init; }
+
+        [JsonPropertyName("last_name")]
+        public string? LastName { get; init; }
+
+        [JsonPropertyName("username")]
         public string? Username { get; init; }
-        public string? Photo_url { get; init; }
-        public string Auth_date { get; init; } = string.Empty;
+
+        [JsonPropertyName("photo_url")]
+        public string? PhotoUrl { get; init; }
+
+        [JsonPropertyName("auth_date")]
+        public string AuthDate { get; init; } = string.Empty;
+
+        [JsonPropertyName("hash")]
         public string Hash { get; init; } = string.Empty;
     }
 }
