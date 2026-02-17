@@ -1,3 +1,4 @@
+using DvizhX.Api.Hubs;
 using DvizhX.Api.Services;
 using DvizhX.Application.Common.Interfaces;
 using DvizhX.Application.Common.Interfaces.Realtime;
@@ -97,6 +98,23 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret)),
         ClockSkew = TimeSpan.Zero // Убираем 5-минутную погрешность по умолчанию
     };
+
+    // Добавляем обработку событий для WebSocket
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+
+            // Если запрос пришел на хаб и есть токен в URL — забираем его
+            var path = context.HttpContext.Request.Path;
+            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+            {
+                context.Token = accessToken;
+            }
+            return Task.CompletedTask;
+        }
+    };
 });
 
 builder.Services.AddAuthorization();
@@ -146,16 +164,21 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors(policy =>
-    policy.WithOrigins("https://shulgan-lab.ru", "https://www.shulgan-lab.ru", "http://localhost:5000")
+    policy.WithOrigins(
+            "https://shulgan-lab.ru",
+            "https://www.shulgan-lab.ru",
+            "http://localhost:5000",
+            "http://localhost:5173" // <--- ДОБАВЛЕНО: Стандартный порт Vite
+          )
           .AllowAnyHeader()
           .AllowAnyMethod()
-          .AllowCredentials()); // Важно, если будем передавать куки или заголовки авторизации
+          .AllowCredentials());
 
 app.UseAuthentication(); // Распознает токен и заполняет User
 app.UseAuthorization();  // Проверяет права доступа ([Authorize])
 
 app.MapControllers();
 
-app.MapHub<DvizhX.Api.Hubs.KanbanHub>("/hubs/kanban");
+app.MapHub<KanbanHub>("/hubs/kanban");
 
 app.Run();

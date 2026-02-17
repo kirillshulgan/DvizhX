@@ -104,8 +104,8 @@ namespace DvizhX.Api.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> UpdateCard(Guid id, UpdateCardCommand command)
         {
-            if (id != command.CardId) return BadRequest();
-            await mediator.Send(command);
+            var commandWithCorrectId = command with { CardId = id };
+            await mediator.Send(commandWithCorrectId);
             return Ok();
         }
 
