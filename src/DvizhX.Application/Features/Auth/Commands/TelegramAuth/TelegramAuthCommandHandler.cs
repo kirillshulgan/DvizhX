@@ -85,7 +85,7 @@ namespace DvizhX.Application.Features.Auth.Commands.TelegramAuth
 
                 user = new User
                 {
-                    Username = data.FirstName ?? $"User{data.Id}",
+                    Username = displayName,
                     Email = fakeEmail,
                     AvatarUrl = data.PhotoUrl,
 
