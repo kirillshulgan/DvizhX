@@ -20,7 +20,7 @@ namespace DvizhX.Application.Features.Auth.Common
         public string? PhotoUrl { get; init; }
 
         [JsonPropertyName("auth_date")]
-        public string AuthDate { get; init; } = string.Empty;
+        public long AuthDate { get; init; }
 
         [JsonPropertyName("hash")]
         public string Hash { get; init; } = string.Empty;

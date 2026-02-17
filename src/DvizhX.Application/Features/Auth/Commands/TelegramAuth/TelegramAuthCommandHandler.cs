@@ -26,19 +26,19 @@ namespace DvizhX.Application.Features.Auth.Commands.TelegramAuth
                 throw new Exception("Telegram BotToken is not configured on server.");
 
             // 2. Проверка актуальности (5 минут)
-            if (!long.TryParse(data.AuthDate, out var authDateUnix))
-                throw new Exception("Invalid auth_date format");
-
-            var authDate = DateTimeOffset.FromUnixTimeSeconds(authDateUnix);
+            // УБРАЛИ long.TryParse, так как data.AuthDate уже long
+            var authDate = DateTimeOffset.FromUnixTimeSeconds(data.AuthDate);
             if (DateTimeOffset.UtcNow - authDate > TimeSpan.FromMinutes(5))
-                throw new Exception("Telegram auth data expired. Try again.");
+            {
+                throw new Exception("Telegram auth data expired");
+            }
 
             // 3. Сборка строки для проверки (data-check-string)
             // Важно: Порядок ключей должен быть алфавитным!
             // Важно: Исключаем пустые значения и сам hash
             var dataParams = new Dictionary<string, string?>
             {
-                { "auth_date", data.AuthDate },
+                { "auth_date", data.AuthDate.ToString() },
                 { "first_name", data.FirstName },
                 { "id", data.Id.ToString() },
                 { "last_name", data.LastName },
