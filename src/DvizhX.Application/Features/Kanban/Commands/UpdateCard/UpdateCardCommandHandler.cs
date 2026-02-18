@@ -8,7 +8,9 @@ namespace DvizhX.Application.Features.Kanban.Commands.UpdateCard
     public class UpdateCardCommandHandler(
         ICardRepository cardRepository,
         ICurrentUserService currentUserService,
-        IKanbanNotifier notifier)
+        IKanbanNotifier notifier,
+        INotificationService firebaseService,
+        IDeviceTokenRepository deviceTokenRepository)
         : IRequestHandler<UpdateCardCommand>
     {
         public async Task Handle(UpdateCardCommand request, CancellationToken cancellationToken)
@@ -30,6 +32,35 @@ namespace DvizhX.Application.Features.Kanban.Commands.UpdateCard
 
             // Уведомляем фронтенд
             await notifier.CardUpdatedAsync(card.Column.Board.EventId, card.Id, card.Title, card.Description);
+
+            // 🔥 Уведомляем Push (Firebase) 🔥
+            try
+            {
+                // Получаем ID всех участников, кроме меня
+                var recipientIds = card.Column.Board.Event.Participants
+                    .Where(p => p.UserId != userId)
+                    .Select(p => p.UserId)
+                    .ToList();
+
+                if (recipientIds.Any())
+                {
+                    // Достаем токены
+                    var tokens = await deviceTokenRepository.GetTokensByUserIdsAsync(recipientIds);
+
+                    if (tokens.Any())
+                    {
+                        await firebaseService.SendMulticastAsync(
+                            tokens,
+                            "Задача обновлена ✏️",
+                            $"Задача '{card.Title}' была изменена"
+                        );
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                // Игнорируем ошибки пушей, чтобы не ломать сохранение
+            }
         }
     }
 }

@@ -8,16 +8,18 @@ using MediatR;
 namespace DvizhX.Application.Features.Kanban.Commands.CreateCard
 {
     public class CreateCardCommandHandler(
-    ICardRepository cardRepository,
-    ICurrentUserService currentUserService,
-    IKanbanNotifier notifier)
-    : IRequestHandler<CreateCardCommand, CardDto>
+        ICardRepository cardRepository,
+        ICurrentUserService currentUserService,
+        IKanbanNotifier notifier,
+        INotificationService firebaseService,
+        IDeviceTokenRepository deviceTokenRepository) : IRequestHandler<CreateCardCommand, CardDto>
     {
         public async Task<CardDto> Handle(CreateCardCommand request, CancellationToken cancellationToken)
         {
             var userId = currentUserService.UserId ?? throw new UnauthorizedAccessException();
 
             // 1. Проверяем доступ через метод репозитория
+            // Важно: Предполагаем, что GetColumnWithHierarchyAsync подгружает Board.Event.Participants
             var column = await cardRepository.GetColumnWithHierarchyAsync(request.ColumnId, cancellationToken);
 
             if (column == null) throw new Exception("Column not found");
@@ -51,9 +53,39 @@ namespace DvizhX.Application.Features.Kanban.Commands.CreateCard
                 null
             );
 
-            // 5. Уведомляем Realtime
+            // 5. Уведомляем Realtime (SignalR)
             var eventId = column.Board.EventId;
             await notifier.CardCreatedAsync(eventId, cardDto);
+
+            // 6. 🔥 Уведомляем Push (Firebase) 🔥
+            try
+            {
+                // Получаем ID всех участников, кроме меня
+                var recipientIds = column.Board.Event.Participants
+                    .Where(p => p.UserId != userId)
+                    .Select(p => p.UserId)
+                    .ToList();
+
+                if (recipientIds.Any())
+                {
+                    // Достаем токены этих пользователей
+                    var tokens = await deviceTokenRepository.GetTokensByUserIdsAsync(recipientIds);
+
+                    if (tokens.Any())
+                    {
+                        await firebaseService.SendMulticastAsync(
+                            tokens,
+                            "Новая карточка 🆕",
+                            $"В колонке '{column.Title}' добавлена задача: {card.Title}"
+                        );
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Логируем, но не выбрасываем исключение, чтобы не откатывать транзакцию создания карточки
+                // _logger.LogError(ex, "Failed to send push notification");
+            }
 
             return cardDto;
         }

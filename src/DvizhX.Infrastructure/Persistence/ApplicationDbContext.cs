@@ -17,6 +17,7 @@ namespace DvizhX.Infrastructure.Persistence
         public DbSet<Card> Cards { get; set; }
 
         public DbSet<RefreshToken> RefreshTokens { get; set; }
+        public DbSet<DeviceToken> DeviceTokens { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

@@ -1,8 +1,10 @@
 ﻿using DvizhX.Application.Common.Interfaces.Authentication;
 using DvizhX.Application.Common.Interfaces.Persistence;
+using DvizhX.Application.Common.Interfaces.Realtime;
 using DvizhX.Infrastructure.Authentication;
 using DvizhX.Infrastructure.Persistence.Repositories;
 using Microsoft.Extensions.DependencyInjection;
+using DvizhX.Infrastructure.Services;
 
 namespace DvizhX.Infrastructure
 {
@@ -16,12 +18,15 @@ namespace DvizhX.Infrastructure
             services.AddSingleton<IJwtTokenValidator, JwtTokenValidator>();
             services.AddSingleton<IGoogleTokenValidator, GoogleTokenValidator>();
 
+            services.AddScoped<INotificationService, FirebaseNotificationService>();
+
             // Repositories
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
             services.AddScoped<IEventRepository, EventRepository>();
             services.AddScoped<IBoardRepository, BoardRepository>();
             services.AddScoped<ICardRepository, CardRepository>();
+            services.AddScoped<IDeviceTokenRepository, DeviceTokenRepository>();
 
             // Можно добавить generic регистрацию, если нужно инжектить IRepository<SomeEntity>
             services.AddScoped(typeof(IRepository<>), typeof(BaseRepository<>));

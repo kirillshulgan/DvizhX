@@ -106,9 +106,6 @@ namespace DvizhX.Api.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> Me()
         {
-            // Извлекаем UserId из Claims токена
-            // .NET автоматически парсит JWT и кладет Claims в User
-            //var userIdClaim = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
