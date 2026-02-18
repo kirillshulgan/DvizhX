@@ -4,8 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DvizhX.Infrastructure.Persistence.Repositories
 {
-    public class DeviceTokenRepository(ApplicationDbContext dbContext)
-        : BaseRepository<DeviceToken>(dbContext), IDeviceTokenRepository
+    public class DeviceTokenRepository(ApplicationDbContext dbContext) : BaseRepository<DeviceToken>(dbContext), IDeviceTokenRepository
     {
         public async Task AddOrUpdateAsync(DeviceToken token, CancellationToken cancellationToken = default)
         {

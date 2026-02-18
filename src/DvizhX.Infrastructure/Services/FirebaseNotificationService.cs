@@ -14,23 +14,57 @@ namespace DvizhX.Infrastructure.Services
         {
             _logger = logger;
 
-            // Инициализация Firebase (Singleton)
+            // 1. Читаем файл как текст
+            string jsonContent;
+            try
+            {
+                // Путь к файлу внутри контейнера
+                var keyPath = Path.Combine(AppContext.BaseDirectory, "dvizhx-b5baf-firebase-adminsdk-fbsvc-b4302ed9fd.json");
+                // Или используй точное имя файла, которое ты видишь в папке /app
+
+                // Если ты не уверен в пути, попробуй найти любой json в папке
+                if (!File.Exists(keyPath))
+                {
+                    var files = Directory.GetFiles(AppContext.BaseDirectory, "*firebase*.json");
+                    if (files.Any()) keyPath = files.First();
+                }
+
+                jsonContent = File.ReadAllText(keyPath);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogCritical($"[CRITICAL] Failed to read Firebase JSON: {ex.Message}");
+                throw;
+            }
+
+            // 2. 🔥 МАГИЧЕСКОЕ ИСПРАВЛЕНИЕ 🔥
+            // Если в строке встречаются экранированные двойные слэши (\\n), превращаем их в обычные (\n)
+            if (jsonContent.Contains("\\n"))
+            {
+                _logger.LogInformation("Fixing escaped newlines in Firebase Key...");
+                jsonContent = jsonContent.Replace("\\n", "\n");
+            }
+
+            // 3. Создаем FirebaseApp из ИСПРАВЛЕННОЙ строки
+            //if (FirebaseApp.DefaultInstance == null)
+            //{
+            //    FirebaseApp.Create(new AppOptions
+            //    {
+            //        Credential = GoogleCredential.FromJson(jsonContent)
+            //    });
+            //}
             if (FirebaseApp.DefaultInstance == null)
             {
-                // Путь к JSON-ключу (лучше вынести в конфиг)
-                var keyPath = Path.Combine(AppContext.BaseDirectory, "dvizhx-b5baf-firebase-adminsdk-fbsvc-b4302ed9fd.json");
+                // Явно говорим, что мы ожидаем Service Account (это безопаснее)
+                var serviceAccountCredential = CredentialFactory.FromJson<ServiceAccountCredential>(jsonContent);
 
-                if (File.Exists(keyPath))
+                // Конвертируем в GoogleCredential
+                var googleCredential = serviceAccountCredential.ToGoogleCredential();
+
+                FirebaseApp.Create(new AppOptions
                 {
-                    FirebaseApp.Create(new AppOptions()
-                    {
-                        Credential = GoogleCredential.FromFile(keyPath)
-                    });
-                }
-                else
-                {
-                    _logger.LogWarning($"Firebase key not found at {keyPath}. Push notifications disabled.");
-                }
+                    Credential = googleCredential
+                });
             }
         }
 
