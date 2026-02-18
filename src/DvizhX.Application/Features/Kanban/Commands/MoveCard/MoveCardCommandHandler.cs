@@ -11,7 +11,6 @@ namespace DvizhX.Application.Features.Kanban.Commands.MoveCard
         IKanbanNotifier notifier,
         IDeviceTokenRepository deviceTokenRepository,
         INotificationService notificationService,
-        IEventRepository eventRepository,
         IUserRepository userRepository)
         : IRequestHandler<MoveCardCommand>
     {
@@ -102,7 +101,8 @@ namespace DvizhX.Application.Features.Kanban.Commands.MoveCard
                     {
                         // Формируем текст уведомления
                         // Можно добавить имя юзера, если оно есть в currentUserService (Name claim)
-                        var currentUser = await userRepository.GetByIdAsync(currentUserService.UserId.Value);
+                        var currentUser = await userRepository.GetByIdAsync(currentUserService.UserId.Value) 
+                            ?? throw new Exception("Not current User");
 
                         var title = "Задача перемещена";
                         var body = $"{currentUser.Username} переместил карточку '{card.Title}'";

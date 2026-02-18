@@ -4,10 +4,12 @@ using DvizhX.Application.Common.Interfaces.Realtime;
 using DvizhX.Application.Features.Kanban.Common;
 using DvizhX.Domain.Entities;
 using MediatR;
+using Microsoft.Extensions.Logging;
 
 namespace DvizhX.Application.Features.Kanban.Commands.CreateCard
 {
     public class CreateCardCommandHandler(
+        ILogger<CreateCardCommandHandler> logger,
         ICardRepository cardRepository,
         ICurrentUserService currentUserService,
         IKanbanNotifier notifier,
@@ -23,6 +25,7 @@ namespace DvizhX.Application.Features.Kanban.Commands.CreateCard
             var column = await cardRepository.GetColumnWithHierarchyAsync(request.ColumnId, cancellationToken);
 
             if (column == null) throw new Exception("Column not found");
+            if (column.Board == null) throw new Exception("Board not found");
 
             var isParticipant = column.Board.Event.Participants.Any(p => p.UserId == userId);
             if (!isParticipant) throw new UnauthorizedAccessException("Access denied");
@@ -84,7 +87,7 @@ namespace DvizhX.Application.Features.Kanban.Commands.CreateCard
             catch (Exception ex)
             {
                 // Логируем, но не выбрасываем исключение, чтобы не откатывать транзакцию создания карточки
-                // _logger.LogError(ex, "Failed to send push notification");
+                logger.LogError(ex, "Failed to send push notification");
             }
 
             return cardDto;

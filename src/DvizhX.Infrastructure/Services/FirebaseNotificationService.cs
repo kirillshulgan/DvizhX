@@ -39,12 +39,21 @@ namespace DvizhX.Infrastructure.Services
 
             // 2. 🔥 МАГИЧЕСКОЕ ИСПРАВЛЕНИЕ 🔥
             // Если в строке встречаются экранированные двойные слэши (\\n), превращаем их в обычные (\n)
+            _logger.LogWarning($"[DEBUG KEY RAW] {jsonContent.Substring(jsonContent.IndexOf("private_key") + 14, 50)}...");
+
             if (jsonContent.Contains("\\n"))
             {
-                _logger.LogInformation("Fixing escaped newlines in Firebase Key...");
+                _logger.LogWarning("[DEBUG] FIXING ESCAPED NEWLINES...");
                 jsonContent = jsonContent.Replace("\\n", "\n");
             }
 
+            var keyStart = jsonContent.IndexOf("-----BEGIN PRIVATE KEY-----");
+            if (keyStart != -1)
+            {
+                // Выводим кусок ключа, чтобы увидеть, есть ли там реальные переносы
+                var sample = jsonContent.Substring(keyStart, 60).Replace("\n", "[LF]");
+                _logger.LogWarning($"[DEBUG KEY FINAL] {sample}...");
+            }
             // 3. Создаем FirebaseApp из ИСПРАВЛЕННОЙ строки
             //if (FirebaseApp.DefaultInstance == null)
             //{
